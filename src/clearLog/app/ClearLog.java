@@ -1,6 +1,9 @@
 package clearLog.app;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -11,53 +14,27 @@ import java.util.Scanner;
 
 
 public class ClearLog {
-	@FunctionalInterface
-	interface Calculator{
-		 int apply(int value1, int value2);
-		 
-		 static void main(String... args) {
-		        Calculator add = (x, y) -> x + y;
-		        Calculator minus = (x, y) -> x - y;
-		        Calculator multiply = (x, y) -> x * y;
-
-		        System.out.println(add.apply(1, 2));
-		        System.out.println(minus.apply(2, 1));
-		        System.out.println(multiply.apply(1, 2));
-		    }
-	}
+	
 	public static void main(String[] args) {
-		Calculator add = (x, y) -> x + y;
-        Calculator minus = (x, y) -> x - y;
-        Calculator multiply = (x, y) -> x * y;
-
-        System.out.println(add.apply(1, 2));
-        System.out.println(minus.apply(2, 1));
-        System.out.println(multiply.apply(1, 2));
-		// TODO Auto-generated method stub
-		System.out.println("=========Welcome to Ohm Tool==========");
+		printStartApp();
 
 		Scanner Sc = new Scanner(System.in);
 
-//		System.out.println("30009999".matches("^([0]{1}[1-9]{1}|[1-2]{1}[0-9]{1}|[3]{1}[0-1]{1})"
-//								+ "([0]{1}[1-3|5|7-8]{1}|[1]{1}[0]{1}|[1]{1}[2]{1})[0-9]{4}$"
-//								+ "|^([0]{1}[1-9]{1}|[1-2]{1}[0-9]{1}|[3]{1}[0]{1})"
-//								+ "([0]{1}[4|6|9]|[1]{1}[1]{1}){1}[0-9]{4}$"));
-//		System.out.println("99990001".matches("^[0-9]{4}"
-//				+ "([0]{1}[1-3|5|7-8]{1}|[1]{1}[0]{1}|[1]{1}[2]{1})[0-9]{4}([0]{1}[1-9]{1}|[1-2]{1}[0-9]{1}|[3]{1}[0-1]{1})$"
-//				+ "|^[0-9]{4}"
-//				+ "([0]{1}[4|6|9]|[1]{1}[1]{1})([0]{1}[1-9]{1}|[1-2]{1}[0-9]{1}|[3]{1}[0]{1})$"));
-		
-		System.out.println("05052018".matches("^[0-9]{4}" + 
-				"([0]{1}[1-3|5|7-8]{1}|[1]{1}[0]{1}|[1]{1}[2]{1})([0]{1}[1-9]{1}|[1-2]{1}[0-9]{1}|[3]{1}[0-1]{1})$" + 
-				"|^[0-9]{4}" + 
-				"([0]{1}[4|6|9]|[1]{1}[1]{1})([0]{1}[1-9]{1}|[1-2]{1}[0-9]{1}|[3]{1}[0]{1})$"));
 		int i=0;
-		while(true) {
-			System.out.println("1 for clearLog");
-			System.out.println("2 for move backup to source");
+		boolean isRun = true;
+		
+		while(isRun) {
+			headTool();
+			System.out.println("1 for ClearLog");
+			System.out.println("2 for Move backup to source");
+			System.out.println("3 for Read errorLog");
+			System.out.println("4 for exit program");
+			System.out.println("========================================");
+			
 			System.out.print("Choose you command : ");
 			try {
 				i = Sc.nextInt();
+				Integer.valueOf(i);
 			}catch(Exception e) {
 				System.out.println("Error input must be number!");
 			}
@@ -112,6 +89,49 @@ public class ClearLog {
 					swap++;
 				}
 			}
+			else if( i == 3)
+			{
+				String[] sourceFolder = {"KTB", "CounterService"};
+				for (String channel : sourceFolder) 
+				{
+					channel = channel.trim();
+					File aDirectory = new File("/u01/counterpayment/log/" + channel);
+					File[] filesInDir = aDirectory.listFiles();
+
+					if (filesInDir != null) 
+					{
+						for (File fileChild : filesInDir)
+						{
+							if (fileChild.isFile())
+							{
+								int lineNo = 1;
+								System.out.println("File name : " + fileChild.getName());
+								try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fileChild), "TIS-620"))) 
+									{
+										for (String line; (line = br.readLine()) != null;) 
+										{
+//											"ErrorLog":"
+											int start = line.indexOf("\"ErrorLog\":\"") + 12;
+											
+//											System.out.println(line.substring(start));
+											String error = line.substring(start).split("\"")[0];
+											System.out.println(lineNo + "." +error);
+											lineNo++;
+										}
+									}
+									catch (Exception e) 
+									{
+										System.out.println(e);
+									}
+							}
+						}
+					}
+				}
+			}
+			else if(i == 4)
+			{
+				isRun = false;
+			}
 			System.out.println("========================================");
 		}
 
@@ -136,5 +156,68 @@ public class ClearLog {
 			e.printStackTrace();
 			return null;
 		}
+	}
+	private static String filterJson(String data) 
+	{
+		String result = "";
+		boolean initCh = false;
+		int duo = 0;
+		int stampNow = 0;
+		
+		for(int i=0; i<data.length();i++) 
+		{
+			char ch = data.charAt(i);
+			
+			if(ch=='{') 
+			{
+				if(duo==0) 
+				{
+					stampNow = i;
+				}
+				initCh = true;
+				duo++;
+			}
+			else if(ch=='}') 
+			{
+				duo--;
+			}
+			
+			if(duo==0 && initCh) 
+			{
+				result = data.substring(stampNow, i+1);
+				initCh = false;
+			}
+		}
+		return result;
+	}
+	
+	private static void printStartApp()
+	{
+		System.out.println(" \n" + 
+				" █████╗ ███████╗███████╗██╗███████╗████████╗    ████████╗███████╗███████╗████████╗\n" + 
+				"██╔══██╗██╔════╝██╔════╝██║██╔════╝╚══██╔══╝    ╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝\n" + 
+				"███████║███████╗███████╗██║███████╗   ██║          ██║   █████╗  ███████╗   ██║   \n" + 
+				"██╔══██║╚════██║╚════██║██║╚════██║   ██║          ██║   ██╔══╝  ╚════██║   ██║   \n" + 
+				"██║  ██║███████║███████║██║███████║   ██║          ██║   ███████╗███████║   ██║   \n" + 
+				"╚═╝  ╚═╝╚══════╝╚══════╝╚═╝╚══════╝   ╚═╝          ╚═╝   ╚══════╝╚══════╝   ╚═╝   \n" + 
+				"                                                                                  \n" + 
+				""
+				+ "██╗   ██╗██████╗ \n" + 
+				"██║   ██║╚════██╗\n" + 
+				"██║   ██║ █████╔╝\n" + 
+				"╚██╗ ██╔╝██╔═══╝ \n" + 
+				" ╚████╔╝ ███████╗\n" + 
+				"  ╚═══╝  ╚══════╝\n" + 
+				"                 ");
+	}
+	
+	private static void headTool()
+	{
+		System.out.println(" ██████╗ ██╗  ██╗███╗   ███╗    ████████╗ ██████╗  ██████╗ ██╗     \n" + 
+				"██╔═══██╗██║  ██║████╗ ████║    ╚══██╔══╝██╔═══██╗██╔═══██╗██║     \n" + 
+				"██║   ██║███████║██╔████╔██║       ██║   ██║   ██║██║   ██║██║     \n" + 
+				"██║   ██║██╔══██║██║╚██╔╝██║       ██║   ██║   ██║██║   ██║██║     \n" + 
+				"╚██████╔╝██║  ██║██║ ╚═╝ ██║       ██║   ╚██████╔╝╚██████╔╝███████╗\n" + 
+				" ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝       ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝");
 	}
 }
